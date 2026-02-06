@@ -103,7 +103,7 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         # Публичный URL бэкенда (браузер будет слать запросы сюда)
-        VITE_API_URL: ${BACKEND_PUBLIC_URL}
+        VITE_API_URL: https://api.${DOMAIN?Variable not set}
         NODE_ENV: production
     restart: always
     depends_on:
