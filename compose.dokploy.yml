@@ -34,6 +34,8 @@ services:
         condition: service_healthy
         restart: true
     command: bash scripts/prestart.sh
+    env_file:
+      - .env
     environment:
       DOMAIN: ${DOMAIN:-localhost}
       FRONTEND_HOST: ${FRONTEND_HOST?FRONTEND_HOST not set}
