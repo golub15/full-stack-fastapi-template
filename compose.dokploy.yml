@@ -35,7 +35,7 @@ services:
     #     restart: true
     command: bash scripts/prestart.sh
     networks:
-      - bos-compose-ewa2qe_default
+      - dokploy-network
     env_file:
       - .env
     environment:
@@ -70,7 +70,7 @@ services:
     #   prestart:
     #     condition: service_completed_successfully
     networks:
-      - bos-compose-ewa2qe_default
+      - dokploy-network
     env_file:
       - .env
     environment:
@@ -115,6 +115,11 @@ services:
     # Порт для Dokploy: привяжите домен дашборда к этому сервису
     # ports:
     #   - "80:80"
+
+
+networks:
+  dokploy-network:
+    external: true
 
 volumes:
   app-db-data:
