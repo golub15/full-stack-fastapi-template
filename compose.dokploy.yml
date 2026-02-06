@@ -91,8 +91,8 @@ services:
       timeout: 5s
       retries: 5
     # Порт для Dokploy: привяжите домен API к этому сервису
-    ports:
-      - "8000:8000"
+    # ports:
+    #   - "8000:8000"
 
   frontend:
     image: frontend:latest
@@ -107,8 +107,8 @@ services:
     depends_on:
       - backend
     # Порт для Dokploy: привяжите домен дашборда к этому сервису
-    ports:
-      - "80:80"
+    # ports:
+    #   - "80:80"
 
 volumes:
   app-db-data:
