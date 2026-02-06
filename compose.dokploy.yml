@@ -1,125 +1,174 @@
-# Docker Compose для деплоя full-stack-fastapi-template через Dokploy
-# Без Traefik: домены и HTTPS настраиваются в Dokploy.
-#
-# Обязательно задайте в Dokploy (переменные проекта/окружения):
-#   DOMAIN, FRONTEND_HOST, BACKEND_CORS_ORIGINS, SECRET_KEY,
-#   FIRST_SUPERUSER, FIRST_SUPERUSER_PASSWORD, POSTGRES_PASSWORD,
-#   BACKEND_PUBLIC_URL (публичный URL API для сборки фронтенда)
-
 services:
-  # db:
-  #   image: postgres:18
-  #   restart: always
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app}"]
-  #     interval: 10s
-  #     retries: 5
-  #     start_period: 30s
-  #     timeout: 10s
-  #   volumes:
-  #     - app-db-data:/var/lib/postgresql/data/pgdata
-  #   environment:
-  #     PGDATA: /var/lib/postgresql/data/pgdata
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD not set}
-  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
-  #     POSTGRES_DB: ${POSTGRES_DB:-app}
+
+  db:
+    image: postgres:18
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    volumes:
+      - app-db-data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+
+  adminer:
+    image: adminer
+    restart: always
+    networks:
+      # - traefik-public
+      - default
+    depends_on:
+      - db
+    environment:
+      - ADMINER_DESIGN=pepa-linha-dark
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.docker.network=traefik-public
+    #   - traefik.constraint-label=traefik-public
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.rule=Host(`adminer.${DOMAIN?Variable not set}`)
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.entrypoints=http
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.middlewares=https-redirect
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.rule=Host(`adminer.${DOMAIN?Variable not set}`)
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.entrypoints=https
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.tls=true
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.tls.certresolver=le
+    #   - traefik.http.services.${STACK_NAME?Variable not set}-adminer.loadbalancer.server.port=8080
 
   prestart:
-    image: backend:latest
+    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
     build:
       context: .
       dockerfile: backend/Dockerfile
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
-    #     restart: true
-    command: bash scripts/prestart.sh
     networks:
-      - dokploy-network
+      # - traefik-public
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    command: bash scripts/prestart.sh
     env_file:
       - .env
     environment:
-      DOMAIN: ${DOMAIN:-localhost}
-      FRONTEND_HOST: ${FRONTEND_HOST?FRONTEND_HOST not set}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
-      SECRET_KEY: ${SECRET_KEY?SECRET_KEY not set}
-      FIRST_SUPERUSER: ${FIRST_SUPERUSER?FIRST_SUPERUSER not set}
-      FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD?FIRST_SUPERUSER_PASSWORD not set}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL:-noreply@example.com}
-      POSTGRES_SERVER: bos-postgres-ndts2e
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD not set}
-      SENTRY_DSN: ${SENTRY_DSN:-}
+      - DOMAIN=${DOMAIN}
+      - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - SENTRY_DSN=${SENTRY_DSN}
 
   backend:
-    image: backend:latest
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
     restart: always
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
-    #     restart: true
-    #   prestart:
-    #     condition: service_completed_successfully
     networks:
-      - dokploy-network
+      # - traefik-public
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      prestart:
+        condition: service_completed_successfully
     env_file:
       - .env
     environment:
-      DOMAIN: ${DOMAIN:-localhost}
-      FRONTEND_HOST: ${FRONTEND_HOST?FRONTEND_HOST not set}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
-      SECRET_KEY: ${SECRET_KEY?SECRET_KEY not set}
-      FIRST_SUPERUSER: ${FIRST_SUPERUSER?FIRST_SUPERUSER not set}
-      FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD?FIRST_SUPERUSER_PASSWORD not set}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL:-noreply@example.com}
-      POSTGRES_SERVER: bos-postgres-ndts2e
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD not set}
-      SENTRY_DSN: ${SENTRY_DSN:-}
+      - DOMAIN=${DOMAIN}
+      - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - SENTRY_DSN=${SENTRY_DSN}
+
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
       interval: 10s
       timeout: 5s
       retries: 5
-    # Порт для Dokploy: привяжите домен API к этому сервису
-    # ports:
-    #   - "8000:8000"
+
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.docker.network=traefik-public
+    #   - traefik.constraint-label=traefik-public
+
+    #   - traefik.http.services.${STACK_NAME?Variable not set}-backend.loadbalancer.server.port=8000
+
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.rule=Host(`api.${DOMAIN?Variable not set}`)
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.entrypoints=http
+
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.rule=Host(`api.${DOMAIN?Variable not set}`)
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.entrypoints=https
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.tls=true
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.tls.certresolver=le
+
+    #   # Enable redirection for HTTP and HTTPS
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.middlewares=https-redirect
 
   frontend:
-    image: frontend:latest
+    image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
+    restart: always
+    networks:
+      # - traefik-public
+      - default
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        # Публичный URL бэкенда (браузер будет слать запросы сюда)
-        VITE_API_URL: https://api.${DOMAIN?Variable not set}
-        NODE_ENV: production
-    restart: always
-    depends_on:
-      - backend
-    # Порт для Dokploy: привяжите домен дашборда к этому сервису
-    # ports:
-    #   - "80:80"
+        - VITE_API_URL=https://api.${DOMAIN?Variable not set}
+        - NODE_ENV=production
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.docker.network=traefik-public
+    #   - traefik.constraint-label=traefik-public
 
+    #   - traefik.http.services.${STACK_NAME?Variable not set}-frontend.loadbalancer.server.port=80
 
-networks:
-  dokploy-network:
-    external: true
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.rule=Host(`dashboard.${DOMAIN?Variable not set}`)
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.entrypoints=http
 
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.rule=Host(`dashboard.${DOMAIN?Variable not set}`)
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.entrypoints=https
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.tls=true
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.tls.certresolver=le
+
+    #   # Enable redirection for HTTP and HTTPS
+    #   - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect
 volumes:
   app-db-data:
+
+# networks:
+#   traefik-public:
+#     # Allow setting it to false for testing
+#     external: true
