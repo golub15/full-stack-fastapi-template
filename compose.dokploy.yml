@@ -67,6 +67,8 @@ services:
         restart: true
       prestart:
         condition: service_completed_successfully
+    env_file:
+      - .env
     environment:
       DOMAIN: ${DOMAIN:-localhost}
       FRONTEND_HOST: ${FRONTEND_HOST?FRONTEND_HOST not set}
