@@ -7,32 +7,32 @@
 #   BACKEND_PUBLIC_URL (публичный URL API для сборки фронтенда)
 
 services:
-  db:
-    image: postgres:18
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app}"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
-    volumes:
-      - app-db-data:/var/lib/postgresql/data/pgdata
-    environment:
-      PGDATA: /var/lib/postgresql/data/pgdata
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD not set}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-app}
+  # db:
+  #   image: postgres:18
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app}"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #     timeout: 10s
+  #   volumes:
+  #     - app-db-data:/var/lib/postgresql/data/pgdata
+  #   environment:
+  #     PGDATA: /var/lib/postgresql/data/pgdata
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD not set}
+  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  #     POSTGRES_DB: ${POSTGRES_DB:-app}
 
   prestart:
     image: backend:latest
     build:
       context: .
       dockerfile: backend/Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-        restart: true
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #     restart: true
     command: bash scripts/prestart.sh
     env_file:
       - .env
@@ -61,12 +61,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: always
-    depends_on:
-      db:
-        condition: service_healthy
-        restart: true
-      prestart:
-        condition: service_completed_successfully
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #     restart: true
+    #   prestart:
+    #     condition: service_completed_successfully
     env_file:
       - .env
     environment:
