@@ -34,6 +34,8 @@ services:
     #     condition: service_healthy
     #     restart: true
     command: bash scripts/prestart.sh
+    networks:
+      - bos-compose-ewa2qe_default
     env_file:
       - .env
     environment:
@@ -67,6 +69,8 @@ services:
     #     restart: true
     #   prestart:
     #     condition: service_completed_successfully
+    networks:
+      - bos-compose-ewa2qe_default
     env_file:
       - .env
     environment:
